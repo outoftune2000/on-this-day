@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>On This Day - Wikipedia Events</title>
+    <title>Aircraft Crash Frequencies - Historical Data</title>
     <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('theme')||window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');</script>
     <style>:root{--bg:#fff;--text:#212529}[data-theme=dark]{--bg:#1a1a1a;--text:#e9ecef}html,body{background:var(--bg);color:var(--text)}</style>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link href="/styles.css" rel="stylesheet">
 </head>
 <body>
@@ -18,28 +19,76 @@
     </div>
     
     <div class="container py-5">
-        <h1 class="text-center mb-4">On This Day in History</h1>
+        <h1 class="text-center mb-4">Aircraft Crash Frequencies Throughout History</h1>
         
         <div class="card mb-4">
+            <div class="card-header">
+                <h3 class="mb-0">Crash Frequency Heatmap</h3>
+            </div>
             <div class="card-body">
-                <form class="row g-3 justify-content-center align-items-center">
-                    <div class="col-auto">
-                        <label for="date" class="form-label">Select Date:</label>
-                        <input type="date" class="form-control" id="date" name="date" value="<%= currentDate %>">
+                <div class="crash-heatmap">
+                    <% 
+                    const months = Array.from({length: 12}, (_, i) => i + 1);
+                    const days = Array.from({length: 31}, (_, i) => i + 1);
+                    %>
+                    
+                    <div class="heatmap-legend mb-3">
+                        <span class="legend-item" style="background-color: rgba(220, 53, 69, 0.1);"></span>
+                        <span>Low</span>
+                        <span class="legend-item" style="background-color: rgba(220, 53, 69, 0.4);"></span>
+                        <span>Medium</span>
+                        <span class="legend-item" style="background-color: rgba(220, 53, 69, 0.7);"></span>
+                        <span>High</span>
                     </div>
-                    <div class="col-auto">
-                        <button type="submit" class="btn btn-primary mt-4">Show Events</button>
+
+                    <div class="text-center mb-4">
+                        <h1>Crash Frequency Heat Map</h1>
+                        <button id="downloadBtn" class="btn btn-primary mb-3">
+                            <i class="bi bi-download"></i> Download Heat Map
+                        </button>
                     </div>
-                </form>
+                    <div id="heatmapContainer">
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Day</th>
+                                        <% months.forEach(month => { %>
+                                            <th><%= moment().month(month-1).format('MMM') %></th>
+                                        <% }); %>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% days.forEach(day => { %>
+                                        <tr>
+                                            <td><%= day %></td>
+                                            <% months.forEach(month => { %>
+                                                <% 
+                                                const dateStr = moment().year(2025).month(month-1).date(day).format('YYYY-MM-DD');
+                                                const dateData = frequencies.find(f => f.date === dateStr);
+                                                const crashes = dateData ? dateData.crashes : 0;
+                                                const opacity = crashes ? Math.min(0.1 + (crashes * 0.2), 0.7) : 0;
+                                                %>
+                                                <td class="heatmap-cell" 
+                                                    style="background-color: rgba(220, 53, 69, <%= opacity %>);"
+                                                    data-crashes="<%= crashes %>">
+                                                    <%= crashes %>
+                                                </td>
+                                            <% }); %>
+                                        </tr>
+                                    <% }); %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <h2 class="text-center mb-4">Events on <%= formattedDate %></h2>
-        
         <% if (crashes && crashes.length > 0) { %>
             <div class="card mb-4">
                 <div class="card-header bg-danger text-white">
-                    <h3 class="mb-0">Aircraft Incidents on This Day</h3>
+                    <h3 class="mb-0">Aircraft Incidents on <%= formattedDate %></h3>
                     <small>Total incidents: <%= crashes.length %></small>
                 </div>
                 <div class="card-body">
@@ -69,33 +118,33 @@
                 </div>
             </div>
         <% } %>
-
-        <div class="timeline">
-            <% events.forEach(event => { %>
-                <div class="timeline-item">
-                    <div class="timeline-badge">
-                        <%= event.year %>
-                    </div>
-                    <div class="timeline-content">
-                        <p>
-                            <%= event.text %>
-                            <% if (event.pages && event.pages.length > 0) { %>
-                                <br>
-                                <small>
-                                    Read more: 
-                                    <% event.pages.forEach((page, index) => { %>
-                                        <a href="<%= page.content_urls.desktop.page %>" target="_blank"><%= page.title %></a><%= index < event.pages.length - 1 ? ', ' : '' %>
-                                    <% }); %>
-                                </small>
-                            <% } %>
-                        </p>
-                    </div>
-                </div>
-            <% }); %>
-        </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/scripts.js"></script>
+    <script>
+        // Theme toggle functionality
+        document.getElementById('themeToggle').addEventListener('click', function() {
+            const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+        });
+
+        // Download functionality
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            html2canvas(document.getElementById('heatmapContainer')).then(function(canvas) {
+                const link = document.createElement('a');
+                link.download = 'crash-heatmap.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        });
+
+        // Make heatmap cells clickable
+        document.querySelectorAll('.heatmap-cell').forEach(cell => {
+            cell.addEventListener('click', () => {
+                const date = cell.getAttribute('data-date');
+                window.location.href = `/?date=${date}`;
+            });
+        });
+    </script>
 </body>
 </html>

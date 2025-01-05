@@ -6,8 +6,14 @@ const path = require('path');
 const app = express();
 const port = 3000;
 
+let crashFrequencyCache = null;
+let lastCacheUpdate = null;
+const CACHE_DURATION = 24 * 60 * 60 * 1000;
+
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
+app.locals.moment = moment;
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function getOnThisDayEvents(date) {
     const month = date.format('M');
@@ -42,6 +48,41 @@ async function getAircraftCrashes(date) {
     }
 }
 
+async function getAllCrashFrequencies() {
+    if (crashFrequencyCache && lastCacheUpdate && (Date.now() - lastCacheUpdate < CACHE_DURATION)) {
+        return crashFrequencyCache;
+    }
+
+    const frequencies = [];
+    const startDate = moment().startOf('year');
+    const endDate = moment().endOf('year');
+    const currentDate = startDate.clone();
+
+    while (currentDate.isSameOrBefore(endDate)) {
+        try {
+            const crashes = await getAircraftCrashes(currentDate.clone());
+            frequencies.push({
+                date: currentDate.format('YYYY-MM-DD'),
+                month: currentDate.format('M'),
+                day: currentDate.format('D'),
+                crashes: crashes.length,
+                details: crashes
+            });
+            
+            await delay(100);
+            
+            currentDate.add(1, 'day');
+        } catch (error) {
+            console.error('Error fetching data for', currentDate.format('YYYY-MM-DD'), error);
+            currentDate.add(1, 'day');
+        }
+    }
+
+    crashFrequencyCache = frequencies;
+    lastCacheUpdate = Date.now();
+    return frequencies;
+}
+
 app.get('/api/events', async (req, res) => {
     const dateStr = req.query.date;
     let date;
@@ -64,32 +105,33 @@ app.get('/api/events', async (req, res) => {
     });
 });
 
+app.get('/api/crash-frequencies', async (req, res) => {
+    const frequencies = await getAllCrashFrequencies();
+    res.json(frequencies);
+});
+
 app.get('/', async (req, res) => {
+    const frequencies = await getAllCrashFrequencies();
+    
     const dateStr = req.query.date;
-    let date;
+    let selectedDate;
+    let selectedCrashes = [];
     
     if (dateStr) {
-        date = moment(dateStr, 'YYYY-MM-DD', true);
-        if (!date.isValid()) {
-            date = moment(); 
+        selectedDate = moment(dateStr, 'YYYY-MM-DD', true);
+        if (selectedDate.isValid()) {
+            const dateData = frequencies.find(f => f.date === dateStr);
+            if (dateData) {
+                selectedCrashes = dateData.details;
+            }
         }
-    } else {
-        date = moment();
     }
     
-    const [events, crashes] = await Promise.all([
-        getOnThisDayEvents(date),
-        getAircraftCrashes(date)
-    ]);
-    
-    events.sort((a, b) => b.year - a.year);
-    crashes.sort((a, b) => b.year - a.year);
-    
     res.render('index', {
-        events,
-        crashes,
-        currentDate: date.format('YYYY-MM-DD'),
-        formattedDate: date.format('MMMM D')
+        frequencies,
+        crashes: selectedCrashes,
+        currentDate: selectedDate ? selectedDate.format('YYYY-MM-DD') : moment().format('YYYY-MM-DD'),
+        formattedDate: selectedDate ? selectedDate.format('MMMM D') : moment().format('MMMM D')
     });
 });
 
