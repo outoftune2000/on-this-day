@@ -22,6 +22,26 @@ async function getOnThisDayEvents(date) {
     }
 }
 
+async function getAircraftCrashes(date) {
+    const month = date.format('M');
+    const day = date.format('D');
+    
+    try {
+        const response = await axios.get(`https://en.wikipedia.org/api/rest_v1/feed/onthisday/events/${month}/${day}`);
+        const events = response.data.events;
+        const crashEvents = events.filter(event => {
+            const text = event.text.toLowerCase();
+            return text.includes('crash') && 
+                   (text.includes('aircraft') || text.includes('plane') || 
+                    text.includes('flight') || text.includes('airline'));
+        });
+        return crashEvents;
+    } catch (error) {
+        console.error('Error fetching crash events:', error.message);
+        return [];
+    }
+}
+
 app.get('/api/events', async (req, res) => {
     const dateStr = req.query.date;
     let date;
@@ -49,7 +69,6 @@ app.get('/', async (req, res) => {
     let date;
     
     if (dateStr) {
-        
         date = moment(dateStr, 'YYYY-MM-DD', true);
         if (!date.isValid()) {
             date = moment(); 
@@ -58,11 +77,17 @@ app.get('/', async (req, res) => {
         date = moment();
     }
     
-    const events = await getOnThisDayEvents(date);
+    const [events, crashes] = await Promise.all([
+        getOnThisDayEvents(date),
+        getAircraftCrashes(date)
+    ]);
+    
     events.sort((a, b) => b.year - a.year);
+    crashes.sort((a, b) => b.year - a.year);
     
     res.render('index', {
         events,
+        crashes,
         currentDate: date.format('YYYY-MM-DD'),
         formattedDate: date.format('MMMM D')
     });

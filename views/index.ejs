@@ -36,6 +36,40 @@
 
         <h2 class="text-center mb-4">Events on <%= formattedDate %></h2>
         
+        <% if (crashes && crashes.length > 0) { %>
+            <div class="card mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="mb-0">Aircraft Incidents on This Day</h3>
+                    <small>Total incidents: <%= crashes.length %></small>
+                </div>
+                <div class="card-body">
+                    <div class="timeline crashes">
+                        <% crashes.forEach(crash => { %>
+                            <div class="timeline-item crash-item">
+                                <div class="timeline-badge bg-danger">
+                                    <%= crash.year %>
+                                </div>
+                                <div class="timeline-content">
+                                    <p>
+                                        <%= crash.text %>
+                                        <% if (crash.pages && crash.pages.length > 0) { %>
+                                            <br>
+                                            <small>
+                                                Read more: 
+                                                <a href="<%= crash.pages[0].content_urls.desktop.page %>" target="_blank">
+                                                    <%= crash.pages[0].displaytitle %>
+                                                </a>
+                                            </small>
+                                        <% } %>
+                                    </p>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                </div>
+            </div>
+        <% } %>
+
         <div class="timeline">
             <% events.forEach(event => { %>
                 <div class="timeline-item">

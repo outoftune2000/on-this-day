@@ -168,6 +168,17 @@ body {
     margin: 0;
 }
 
+.timeline .crash-item .timeline-badge {
+    background-color: #dc3545 !important;
+}
+
+.timeline .crash-item .timeline-content {
+    border-left: 3px solid #dc3545;
+}
+
+.crashes .timeline-item:hover .timeline-content {
+    background-color: rgba(220, 53, 69, 0.1);
+}
 
 h1, h2, h3, h4, h5, h6 {
     color: var(--text-primary);
