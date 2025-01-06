@@ -37,9 +37,25 @@ async function getAircraftCrashes(date) {
         const events = response.data.events;
         const crashEvents = events.filter(event => {
             const text = event.text.toLowerCase();
+            // Include aircraft crashes but exclude space-related incidents
             return text.includes('crash') && 
                    (text.includes('aircraft') || text.includes('plane') || 
-                    text.includes('flight') || text.includes('airline'));
+                    text.includes('flight') || text.includes('airline')) &&
+                   !text.includes('space') && 
+                   !text.includes('spacecraft') && 
+                   !text.includes('shuttle') &&
+                   !text.includes('rocket') &&
+                   !text.includes('satellite');
+        }).map(event => {
+            // Extract death count from text using regex
+            const text = event.text.toLowerCase();
+            const deathMatch = text.match(/killing (\d+)|(\d+) people killed|(\d+) deaths|(\d+) died|(\d+) dead|(\d+) passengers? and crew|all (\d+) (people |passengers? )?aboard/);
+            let deaths = 0;
+            if (deathMatch) {
+                // Find the first non-null capture group that contains a number
+                deaths = parseInt(deathMatch.slice(1).find(match => match !== undefined)) || 0;
+            }
+            return { ...event, deaths };
         });
         return crashEvents;
     } catch (error) {
@@ -66,6 +82,7 @@ async function getAllCrashFrequencies() {
                 month: currentDate.format('M'),
                 day: currentDate.format('D'),
                 crashes: crashes.length,
+                deaths: crashes.reduce((sum, crash) => sum + crash.deaths, 0),
                 details: crashes
             });
             

@@ -301,6 +301,15 @@ h1, h2, h3, h4, h5, h6 {
     z-index: 1;
 }
 
+.invalid-date {
+    background-color: #f8f9fa;
+    border: none !important;
+}
+
+[data-theme="dark"] .invalid-date {
+    background-color: #343a40;
+}
+
 @media (max-width: 768px) {
     .timeline::before {
         left: 40px;
